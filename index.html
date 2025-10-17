@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Image OCR Demo (Not for CAPTCHA/Verification)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b1020;
+      --card: #12182c;
+      --muted: #a3b1c6;
+      --text: #eaf0ff;
+      --accent: #6aa6ff;
+      --accent-2: #5de3b5;
+      --warn: #ffb86b;
+      --error: #ff6b6b;
+      --border: #1f2740;
+      --shadow: rgba(0,0,0,0.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0b1020 0%, #0b0f1a 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 1080px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px var(--shadow);
+      overflow: hidden;
+    }
+    header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(180deg, rgba(106,166,255,0.08), transparent);
+    }
+    header .logo {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: grid; place-items: center;
+      color: white;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      box-shadow: 0 6px 16px rgba(90,160,255,0.35);
+    }
+    header h1 {
+      font-size: 18px; margin: 0; line-height: 1.1;
+    }
+    header p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .content {
+      padding: 18px 22px 22px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+    @media (max-width: 920px) {
+      .content { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #0e1529;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card h2 {
+      margin: 0; padding: 12px 14px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      background: #0d1330;
+    }
+    .card .body {
+      padding: 14px;
+    }
+
+    .inline {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 240px;
+      background: #0a1022;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    input[type="text"]::placeholder { color: #6f7ea0; }
+    button {
+      background: linear-gradient(180deg, #1d62ff, #0d47d8);
+      color: white; border: 0; border-radius: 10px;
+      padding: 10px 14px; cursor: pointer; font-weight: 600;
+      box-shadow: 0 6px 16px rgba(29,98,255,0.35);
+    }
+    button.secondary {
+      background: #10193a; color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    button.ghost {
+      background: transparent; color: var(--muted);
+      border: 1px dashed var(--border);
+      box-shadow: none;
+    }
+    .hint {
+      font-size: 12px; color: var(--muted);
+      margin-top: 8px;
+    }
+    .warn { color: var(--warn); }
+    .error { color: var(--error); }
+
+    .dropzone {
+      border: 2px dashed #2a3967;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      transition: border-color .2s, background .2s;
+      background: rgba(30,44,84,0.25);
+    }
+    .dropzone.drag {
+      border-color: var(--accent);
+      background: rgba(106,166,255,0.08);
+    }
+
+    .preview {
+      display: grid; place-items: center; background: #0a0f22;
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      min-height: 180px;
+    }
+    .preview img, .preview canvas {
+      max-width: 100%; height: auto; display: block;
+    }
+
+    .progress {
+      margin-top: 10px;
+      display: grid; gap: 6px;
+    }
+    .bar {
+      height: 10px; background: #0a132c; border-radius: 999px;
+      overflow: hidden; border: 1px solid var(--border);
+    }
+    .bar > i {
+      display: block; height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width .2s ease;
+    }
+    .status {
+      font-size: 12px; color: var(--muted);
+      display: flex; justify-content: space-between;
+    }
+
+    .result {
+      background: #070b17; border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px; white-space: pre-wrap;
+      min-height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      color: #e3ecff;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 10px; border-radius: 999px;
+      background: rgba(255, 107, 107, 0.08);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      color: #ff9a9a; font-size: 12px; font-weight: 600;
+    }
+    footer {
+      padding: 14px 22px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+      background: #0d1330;
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between;
+    }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">OCR</div>
+      <div>
+        <h1>Image OCR Demo</h1>
+        <p>For general text-in-image OCR only. Not for CAPTCHA, anti-bot, or verification challenges.</p>
+      </div>
+      <div class="spacer"></div>
+      <span class="badge" title="The app blocks known CAPTCHA URLs and usage.">No CAPTCHA use</span>
+    </header>
+
+    <div class="content">
+      <section class="card">
+        <h2>1) Select or load an image</h2>
+        <div class="body">
+          <div class="inline">
+            <input id="urlInput" type="text" placeholder="https://example.com/image.png (or use ?url= query param)" />
+            <button id="loadBtn">Load URL</button>
+            <button id="sampleBtn" class="secondary">Use Sample</button>
+            <label class="ghost" style="padding:10px 12px; border-radius:10px; cursor:pointer">
+              <input id="fileInput" type="file" accept="image/*" style="display:none" />
+              Upload Image
+            </label>
+          </div>
+          <div id="policyMsg" class="hint warn" style="margin-top:8px">
+            Reminder: Do not use this tool to process CAPTCHA/verification images. Such usage is blocked.
+          </div>
+
+          <div id="dropzone" class="dropzone" style="margin-top:12px">
+            Drag & drop an image here, or click “Upload Image”.
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px">
+            <div>
+              <div class="hint">Preview</div>
+              <div class="preview"><img id="preview" alt="Preview" /></div>
+            </div>
+            <div>
+              <div class="hint">Controls</div>
+              <div class="row" style="margin-top:6px">
+                <button id="ocrBtn">Run OCR</button>
+                <button id="clearBtn" class="secondary">Clear</button>
+                <button id="copyBtn" class="secondary">Copy Text</button>
+              </div>
+              <div class="progress">
+                <div class="bar"><i id="bar"></i></div>
+                <div class="status">
+                  <span id="phase">idle</span>
+                  <span id="pct">0%</span>
+                </div>
+              </div>
+              <div id="errorBox" class="hint error" style="margin-top:8px; display:none"></div>
+              <div id="corsHint" class="hint" style="margin-top:8px; display:none">
+                If loading a remote image fails, the server may not allow cross-origin access (CORS). Download the image and use “Upload Image”.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2) OCR result</h2>
+        <div class="body">
+          <div id="result" class="result" spellcheck="false"></div>
+          <div class="hint" style="margin-top:8px">
+            Tip: Clean, high-contrast images produce better results. This tool does not implement CAPTCHA-solving techniques and will refuse obvious CAPTCHA URLs.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div>Client-side OCR powered by Tesseract.js (eng). No uploads to a server by this app.</div>
+      <div>Use responsibly. Do not employ this for bypassing security or verification systems.</div>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    // This app is a general OCR demo. It must not be used to process CAPTCHA/verification images.
+    // To reduce misuse, we block URLs that appear to be related to CAPTCHA / verification systems.
+    const blocklistPatterns = [
+      /captcha/i, /recaptcha/i, /hcaptcha/i, /cloudflare/i, /challenge/i, /verify/i, /verification/i, /bot-check/i, /areyouhuman/i
+    ];
+
+    const el = (id) => document.getElementById(id);
+    const urlInput = el('urlInput');
+    const loadBtn = el('loadBtn');
+    const sampleBtn = el('sampleBtn');
+    const fileInput = el('fileInput');
+    const dropzone = el('dropzone');
+    const preview = el('preview');
+    const ocrBtn = el('ocrBtn');
+    const clearBtn = el('clearBtn');
+    const copyBtn = el('copyBtn');
+    const resultBox = el('result');
+    const bar = el('bar');
+    const phase = el('phase');
+    const pct = el('pct');
+    const errorBox = el('errorBox');
+    const corsHint = el('corsHint');
+
+    let currentSrc = null;
+
+    function isLikelyCaptchaURL(u) {
+      if (!u) return false;
+      try {
+        const url = new URL(u, location.href);
+        const text = [url.href, url.pathname, url.hostname, url.search].join(' ');
+        return blocklistPatterns.some(rx => rx.test(text));
+      } catch { return blocklistPatterns.some(rx => rx.test(String(u))); }
+    }
+
+    function setError(msg) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = msg;
+    }
+    function clearError() {
+      errorBox.style.display = 'none';
+      errorBox.textContent = '';
+    }
+    function setProgress(p) {
+      const clamped = Math.max(0, Math.min(1, p || 0));
+      bar.style.width = (clamped * 100).toFixed(1) + '%';
+      pct.textContent = Math.round(clamped * 100) + '%';
+    }
+    function setPhase(text) {
+      phase.textContent = text || 'idle';
+    }
+    function setPreviewSrc(src) {
+      preview.src = src;
+    }
+
+    function generateSampleDataURL() {
+      // Creates a simple sample image; this is NOT a CAPTCHA.
+      const c = document.createElement('canvas');
+      c.width = 640; c.height = 200;
+      const g = c.getContext('2d');
+      // background
+      const grd = g.createLinearGradient(0,0,640,0);
+      grd.addColorStop(0, '#0d1a3a');
+      grd.addColorStop(1, '#0b1330');
+      g.fillStyle = grd; g.fillRect(0,0,c.width,c.height);
+
+      // soft grid
+      g.strokeStyle = 'rgba(255,255,255,0.05)';
+      for (let x=0;x<c.width;x+=20){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,c.height); g.stroke(); }
+      for (let y=0;y<c.height;y+=20){ g.beginPath(); g.moveTo(0,y); g.lineTo(c.width,y); g.stroke(); }
+
+      // text
+      g.fillStyle = '#eaf0ff';
+      g.font = '700 64px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+      g.fillText('SAMPLE OCR 123', 40, 110);
+      g.font = '500 28px ui-sans-serif, system-ui';
+      g.fillStyle = '#9db4ff';
+      g.fillText('Clean, non-CAPTCHA image', 40, 155);
+
+      // light underline
+      g.strokeStyle = 'rgba(90,160,255,0.5)';
+      g.lineWidth = 4;
+      g.beginPath(); g.moveTo(36, 120); g.lineTo(600, 120); g.stroke();
+
+      return c.toDataURL('image/png');
+    }
+
+    async function loadImageFromURL(u) {
+      clearError(); corsHint.style.display = 'none';
+      if (!u) { setError('Please enter an image URL.'); return; }
+      if (isLikelyCaptchaURL(u)) {
+        setError('This app refuses to process CAPTCHA or verification-related URLs. Please use a non-CAPTCHA image.');
+        return;
+      }
+      urlInput.value = u;
+      // Try to display directly; also keep source as URL for Tesseract (it fetches internally)
+      try {
+        setPreviewSrc(u);
+        currentSrc = u;
+      } catch (e) {
+        setError('Failed to load image.');
+      }
+    }
+
+    function loadFile(file) {
+      clearError();
+      if (!file || !file.type.startsWith('image/')) {
+        setError('Please select a valid image file.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        currentSrc = reader.result;
+        setPreviewSrc(currentSrc);
+      };
+      reader.onerror = () => setError('Failed to read the selected file.');
+      reader.readAsDataURL(file);
+    }
+
+    async function runOCR() {
+      clearError();
+      if (!currentSrc) {
+        setError('No image loaded.');
+        return;
+      }
+      setPhase('initializing');
+      setProgress(0);
+      resultBox.textContent = '';
+      try {
+        const { createWorker } = Tesseract;
+        // Reuse a singleton worker for performance
+        if (!window.__ocrWorker) {
+          window.__ocrWorker = await createWorker('eng', 1, {
+            logger: (m) => {
+              if (m.status) setPhase(m.status);
+              if (typeof m.progress === 'number') setProgress(m.progress);
+            }
+          });
+        }
+        const worker = window.__ocrWorker;
+        // This will fetch the image internally; if remote and blocked by CORS, it may fail.
+        const out = await worker.recognize(currentSrc);
+        setPhase('done');
+        setProgress(1);
+        resultBox.textContent = (out?.data?.text || '').trim();
+      } catch (e) {
+        setPhase('error');
+        setProgress(0);
+        // Heuristics for CORS
+        const msg = String(e && (e.message || e)) || 'Unknown error';
+        if (/cross-origin|CORS|fetch|network/i.test(msg)) {
+          corsHint.style.display = 'block';
+        }
+        setError('OCR failed: ' + msg);
+      }
+    }
+
+    function clearAll() {
+      clearError();
+      setProgress(0);
+      setPhase('idle');
+      resultBox.textContent = '';
+      currentSrc = null;
+      preview.removeAttribute('src');
+      urlInput.value = '';
+      corsHint.style.display = 'none';
+    }
+
+    function copyResult() {
+      const text = resultBox.textContent || '';
+      navigator.clipboard.writeText(text).then(() => {
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => (copyBtn.textContent = prev), 900);
+      });
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault(); dropzone.classList.add('drag');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropzone.classList.remove('drag');
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) loadFile(f);
+    });
+
+    // Controls
+    loadBtn.addEventListener('click', () => loadImageFromURL(urlInput.value.trim()));
+    sampleBtn.addEventListener('click', () => {
+      const d = generateSampleDataURL();
+      currentSrc = d;
+      setPreviewSrc(d);
+      urlInput.value = '';
+      clearError();
+    });
+    fileInput.addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (f) loadFile(f);
+      e.target.value = '';
+    });
+    ocrBtn.addEventListener('click', runOCR);
+    clearBtn.addEventListener('click', clearAll);
+    copyBtn.addEventListener('click', copyResult);
+
+    // Support ?url=... query param
+    (function initFromQuery() {
+      const params = new URLSearchParams(location.search);
+      const qurl = params.get('url');
+      if (qurl) {
+        urlInput.value = qurl;
+        if (isLikelyCaptchaURL(qurl)) {
+          setError('Blocked: The provided URL appears to be related to CAPTCHA or verification. Please use a non-CAPTCHA image.');
+          // Fallback to sample
+          const d = generateSampleDataURL();
+          currentSrc = d;
+          setPreviewSrc(d);
+        } else {
+          loadImageFromURL(qurl);
+        }
+      } else {
+        // Default to sample if nothing specified
+        const d = generateSampleDataURL();
+        currentSrc = d;
+        setPreviewSrc(d);
+      }
+    })();
+  </script>
+</body>
+</html>
